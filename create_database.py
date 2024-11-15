@@ -7,6 +7,7 @@ from langchain_community.vectorstores import Chroma
 import os
 import shutil
 
+
 # Prompt the user for the API key
 OPENAI_API_KEY = input("Please enter your OpenAI API key: ")
 
