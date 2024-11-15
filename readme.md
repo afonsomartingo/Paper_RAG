@@ -68,6 +68,20 @@ This project provides a framework for managing scientific document databases and
 ## **Prompt Template**
 The generated scientific text adheres to the following template:
 
+> Using exclusively the following contexts:
+> 
+> Primary context (your thesis document): {context}
+> 
+> Supplemental context (scientific articles from top-tier conferences): {external_context}
+> 
+> Compose a scientifically structured text on the topic below, suitable for submission to top-tier scientific conferences. The text should:
+> 
+> 1. Clearly and accurately explain the concept or technique.
+> 2. Include relevant analysis or discussion based on the context.
+> 3. Be well-structured and coherent.
+> 
+> Specific topic: {question}
+
 ---
 
 ## **Example Workflow**
