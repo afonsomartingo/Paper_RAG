@@ -6,10 +6,6 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
 import os
 import shutil
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
 
 # Prompt the user for the API key
 OPENAI_API_KEY = input("Please enter your OpenAI API key: ")
@@ -27,12 +23,17 @@ def main():
     documents_scientific = load_documents(data_path=DATA_PATH_articles)
     chunks = split_text(documents)
     chunks_scientific = split_text(documents_scientific)
-    save_to_chroma(chunks,CHROMA_PATH)
-    save_to_chroma(chunks_scientific,CHROMA_PATH_articles)
+    save_to_chroma(chunks, CHROMA_PATH)
+    save_to_chroma(chunks_scientific, CHROMA_PATH_articles)
 
-def load_documents(data_path: str = DATA_PATH):
-    loader = DirectoryLoader(DATA_PATH, glob="*.pdf", loader_cls=PyPDFLoader)
-    documents = loader.load()
+def load_documents(data_path: str):
+    loader = DirectoryLoader(data_path, glob="*.pdf", loader_cls=PyPDFLoader)
+    documents = []
+    for doc in loader.lazy_load():
+        try:
+            documents.append(doc)
+        except Exception as e:
+            print(f"Error loading file {doc}: {e}")
     return documents
 
 def split_text(documents: list[Document]):
@@ -52,7 +53,7 @@ def split_text(documents: list[Document]):
 
     return chunks
 
-def save_to_chroma(chunks: list[Document],chroma_path: str = CHROMA_PATH):
+def save_to_chroma(chunks: list[Document], chroma_path: str):
     # Clear out the database first
     if os.path.exists(chroma_path):
         for _ in range(5):  # Retry up to 5 times
