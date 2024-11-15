@@ -5,7 +5,7 @@ from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 import os
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import ttk, messagebox
 
 CHROMA_PATH = "chroma"
 
@@ -34,60 +34,75 @@ Write the scientific text based on the provided context and follow all the guide
 """
 
 class App:
-    def __init__(self,root):
+    def __init__(self, root):
         self.root = root
         self.root.title("Scientific Paper Generator and Database Management")
+        self.root.geometry("800x600")
+        self.root.configure(bg="#2e2e2e")
 
-        # Create the widgets for the GUI
-        self.api_key_label = tk.Label(root, text="OpenAI API Key:")
-        self.api_key_label.pack()
-        self.api_key_entry = tk.Entry(root, show="*")
-        self.api_key_entry.pack()
-        
-        self.query_label = tk.Label(root, text="Query Text:")
-        self.query_label.pack()
-        self.query_entry = tk.Entry(root)
-        self.query_entry.pack()
-        
-        self.query_button = tk.Button(root, text="Query Database", command=self.query_database)
-        self.query_button.pack()
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure("TLabel", font=("Helvetica", 12), background="#2e2e2e", foreground="white")
+        style.configure("TButton", font=("Helvetica", 12), background="#4e4e4e", foreground="white")
+        style.configure("TEntry", font=("Helvetica", 12), fieldbackground="#4e4e4e", foreground="white")
+        style.configure("TFrame", background="#2e2e2e")
 
-        self.result_text = tk.Text(root, height=20, width=80)
-        self.result_text.pack()
+        self.api_key_label = ttk.Label(root, text="OpenAI API Key:")
+        self.api_key_label.pack(pady=10)
+        self.api_key_entry = ttk.Entry(root, show="*")
+        self.api_key_entry.pack(pady=5, padx=20, fill=tk.X)
+
+        self.query_label = ttk.Label(root, text="Query Text:")
+        self.query_label.pack(pady=10)
+        self.query_entry = ttk.Entry(root)
+        self.query_entry.pack(pady=5, padx=20, fill=tk.X)
+
+        self.query_button = ttk.Button(root, text="Query Database", command=self.query_database)
+        self.query_button.pack(pady=20)
+
+        self.result_frame = ttk.Frame(root)
+        self.result_frame.pack(pady=10, padx=20, fill=tk.BOTH, expand=True)
+
+        self.result_text = tk.Text(self.result_frame, height=20, width=80, wrap=tk.WORD, font=("Helvetica", 12), bg="#4e4e4e", fg="white")
+        self.result_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        self.scrollbar = ttk.Scrollbar(self.result_frame, orient=tk.VERTICAL, command=self.result_text.yview)
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.result_text.config(yscrollcommand=self.scrollbar.set)
 
     def query_database(self):
-            api_key = self.api_key_entry.get()
-            os.environ["OPENAI_API_KEY"] = api_key
+        api_key = self.api_key_entry.get()
+        os.environ["OPENAI_API_KEY"] = api_key
 
-            query_text = self.query_entry.get()
-            if not query_text:
-                messagebox.showerror("Error", "Please enter a query text.")
-                return
+        query_text = self.query_entry.get()
+        if not query_text:
+            messagebox.showerror("Error", "Please enter a query text.")
+            return
 
-            embedding_function = OpenAIEmbeddings(openai_api_key=api_key)
-            db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
-            
-            # Search the DB
-            results = db.similarity_search(query_text, k=5)  # Search the database for the most similar documents
-            if len(results) == 0:  # If no results are found
-                self.result_text.insert(tk.END, "No results found\n")
-                return
-            
-            # Search the DB articles
-            results_articles = db.similarity_search(query_text, k=5)  # Search the database for the most similar documents
+        embedding_function = OpenAIEmbeddings(openai_api_key=api_key)
+        db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
+        
+        # Search the DB
+        results = db.similarity_search(query_text, k=5)  # Search the database for the most similar documents
+        if len(results) == 0:  # If no results are found
+            self.result_text.insert(tk.END, "No results found\n")
+            return
+        
+        # Search the DB articles
+        results_articles = db.similarity_search(query_text, k=5)  # Search the database for the most similar documents
 
-            context_text = "\n\n---\n\n".join([doc.page_content for doc in results])  # Get the context text
-            external_context = "\n\n---\n\n".join([doc.page_content for doc in results_articles])  # Get the context
+        context_text = "\n\n---\n\n".join([doc.page_content for doc in results])  # Get the context text
+        external_context = "\n\n---\n\n".join([doc.page_content for doc in results_articles])  # Get the context
 
-            prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
-            prompt = prompt_template.format(context=context_text, external_context=external_context, question=query_text)
+        prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
+        prompt = prompt_template.format(context=context_text, external_context=external_context, question=query_text)
 
-            model = ChatOpenAI(openai_api_key=api_key)
-            response_text = model.invoke(prompt)  # Use invoke instead of predict
-            
-            sources = [doc.metadata.get("source", None) for doc in results]
-            formatted_response = f"Response: {response_text}\nSources: {sources}"
-            self.result_text.insert(tk.END, formatted_response + "\n")
+        model = ChatOpenAI(openai_api_key=api_key)
+        response_text = model.invoke(prompt)  # Use invoke instead of predict
+        
+        #sources = [doc.metadata.get("source", None) for doc in results]
+        formatted_response = f"Response: {response_text}"
+        self.result_text.insert(tk.END, formatted_response + "\n")
 
 if __name__ == "__main__":
     root = tk.Tk()
