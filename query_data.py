@@ -23,8 +23,8 @@ Using exclusively the following contexts:
 Compose a scientifically structured text on the topic below, suitable for submission to top-tier scientific conferences. The text should:
 
 1. Clearly and accurately explain the concept or technique.
-3. Include relevant analysis or discussion based on the context.
-4. Be well-structured and coherent.  
+2. Include relevant analysis or discussion based on the context.
+3. Be well-structured and coherent.  
 
 Specific topic: {question}
 
@@ -101,7 +101,7 @@ class App:
         response_text = model.invoke(prompt)  # Use invoke instead of predict
         
         sources = [doc.metadata.get("source", None) for doc in results]
-        formatted_response = f"Response: {response_text}\nSources: {sources}"
+        formatted_response = f"Response: {response_text}\n"
         self.result_text.insert(tk.END, formatted_response + "\n")
 
 if __name__ == "__main__":
