@@ -103,11 +103,11 @@ class App:
         prompt = prompt_template.format(context=context_text, external_context=external_context, question=query_text)
 
         model = ChatOpenAI(openai_api_key=api_key)
-        response_text = model.invoke(prompt)  # Use invoke instead of predict
+        response = model.invoke(prompt, max_tokens=500)  # Use invoke with max_tokens
         
-        sources = [doc.metadata.get("source", None) for doc in results]
-        formatted_response = f"Response: {response_text}\nSources: {sources}"
-        self.result_text.insert(tk.END, formatted_response + "\n")
+        response_text = response['choices'][0]['message']['content'].strip()  # Extract only the content
+        
+        self.result_text.insert(tk.END, f"{response_text}\n")
 
 if __name__ == "__main__":
     root = tk.Tk()

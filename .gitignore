@@ -1,0 +1,9 @@
+# Ignore the Msc_Afonso_Carvalho.pdf file
+data/pdf/Msc_Afonso_Carvalho.pdf
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore environment variables file
+.env
