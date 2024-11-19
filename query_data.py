@@ -1,4 +1,3 @@
-# from dataclasses import dataclass
 import argparse
 from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
@@ -6,6 +5,7 @@ from langchain.prompts import ChatPromptTemplate
 import os
 import tkinter as tk
 from tkinter import ttk, messagebox
+from concurrent.futures import ThreadPoolExecutor
 
 CHROMA_PATH = "chroma"
 
@@ -23,8 +23,8 @@ Using exclusively the following contexts:
 Compose a scientifically structured text on the topic below, suitable for submission to top-tier scientific conferences. The text should:
 
 1. Clearly and accurately explain the concept or technique.
-3. Include relevant analysis or discussion based on the context.
-4. Be well-structured and coherent.  
+2. Include relevant analysis or discussion based on the context.
+3. Be well-structured and coherent.  
 
 Specific topic: {question}
 
@@ -36,7 +36,7 @@ Write the scientific text based on the provided context and follow all the guide
 class App:
     def __init__(self, root):
         self.root = root
-        self.root.title("Scientific Paper Generator and Database Management")
+        self.root.title("Scientific Paper Generator")
         self.root.geometry("800x600")
         self.root.configure(bg="#2e2e2e")
 
@@ -47,19 +47,6 @@ class App:
         style.configure("TEntry", font=("Helvetica", 12), fieldbackground="#4e4e4e", foreground="white")
         style.configure("TFrame", background="#2e2e2e")
 
-        self.api_key_label = ttk.Label(root, text="OpenAI API Key:")
-        self.api_key_label.pack(pady=10)
-        self.api_key_entry = ttk.Entry(root, show="*")
-        self.api_key_entry.pack(pady=5, padx=20, fill=tk.X)
-
-        self.query_label = ttk.Label(root, text="Query Text:")
-        self.query_label.pack(pady=10)
-        self.query_entry = ttk.Entry(root)
-        self.query_entry.pack(pady=5, padx=20, fill=tk.X)
-
-        self.query_button = ttk.Button(root, text="Query Database", command=self.query_database)
-        self.query_button.pack(pady=20)
-
         self.result_frame = ttk.Frame(root)
         self.result_frame.pack(pady=10, padx=20, fill=tk.BOTH, expand=True)
 
@@ -69,6 +56,19 @@ class App:
         self.scrollbar = ttk.Scrollbar(self.result_frame, orient=tk.VERTICAL, command=self.result_text.yview)
         self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.result_text.config(yscrollcommand=self.scrollbar.set)
+
+        self.query_label = ttk.Label(root, text="Query Text:")
+        self.query_label.pack(pady=10, side=tk.BOTTOM)
+        self.query_entry = ttk.Entry(root)
+        self.query_entry.pack(pady=5, padx=20, fill=tk.X, side=tk.BOTTOM)
+
+        self.api_key_label = ttk.Label(root, text="OpenAI API Key:")
+        self.api_key_label.pack(pady=10, side=tk.BOTTOM)
+        self.api_key_entry = ttk.Entry(root, show="*")
+        self.api_key_entry.pack(pady=5, padx=20, fill=tk.X, side=tk.BOTTOM)
+
+        self.query_button = ttk.Button(root, text="Query Database", command=self.query_database)
+        self.query_button.pack(pady=20, side=tk.BOTTOM)
 
     def query_database(self):
         api_key = self.api_key_entry.get()
@@ -82,14 +82,19 @@ class App:
         embedding_function = OpenAIEmbeddings(openai_api_key=api_key)
         db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
         
-        # Search the DB
-        results = db.similarity_search(query_text, k=5)  # Search the database for the most similar documents
+        # Use ThreadPoolExecutor for parallel processing
+        with ThreadPoolExecutor() as executor:
+            future_results = executor.submit(db.similarity_search, query_text, k=5)
+            results = future_results.result()
+
         if len(results) == 0:  # If no results are found
             self.result_text.insert(tk.END, "No results found\n")
             return
         
-        # Search the DB articles
-        results_articles = db.similarity_search(query_text, k=5)  # Search the database for the most similar documents
+        # Use ThreadPoolExecutor for parallel processing
+        with ThreadPoolExecutor() as executor:
+            future_results_articles = executor.submit(db.similarity_search, query_text, k=5)
+            results_articles = future_results_articles.result()
 
         context_text = "\n\n---\n\n".join([doc.page_content for doc in results])  # Get the context text
         external_context = "\n\n---\n\n".join([doc.page_content for doc in results_articles])  # Get the context
@@ -100,8 +105,8 @@ class App:
         model = ChatOpenAI(openai_api_key=api_key)
         response_text = model.invoke(prompt)  # Use invoke instead of predict
         
-        #sources = [doc.metadata.get("source", None) for doc in results]
-        formatted_response = f"Response: {response_text}"
+        sources = [doc.metadata.get("source", None) for doc in results]
+        formatted_response = f"Response: {response_text}\nSources: {sources}"
         self.result_text.insert(tk.END, formatted_response + "\n")
 
 if __name__ == "__main__":
