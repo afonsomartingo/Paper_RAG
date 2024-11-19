@@ -1,4 +1,3 @@
-# from dataclasses import dataclass
 import argparse
 from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
@@ -6,6 +5,7 @@ from langchain.prompts import ChatPromptTemplate
 import os
 import tkinter as tk
 from tkinter import ttk, messagebox
+from concurrent.futures import ThreadPoolExecutor
 
 CHROMA_PATH = "chroma"
 
@@ -82,14 +82,19 @@ class App:
         embedding_function = OpenAIEmbeddings(openai_api_key=api_key)
         db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
         
-        # Search the DB
-        results = db.similarity_search(query_text, k=5)  # Search the database for the most similar documents
+        # Use ThreadPoolExecutor for parallel processing
+        with ThreadPoolExecutor() as executor:
+            future_results = executor.submit(db.similarity_search, query_text, k=5)
+            results = future_results.result()
+
         if len(results) == 0:  # If no results are found
             self.result_text.insert(tk.END, "No results found\n")
             return
         
-        # Search the DB articles
-        results_articles = db.similarity_search(query_text, k=5)  # Search the database for the most similar documents
+        # Use ThreadPoolExecutor for parallel processing
+        with ThreadPoolExecutor() as executor:
+            future_results_articles = executor.submit(db.similarity_search, query_text, k=5)
+            results_articles = future_results_articles.result()
 
         context_text = "\n\n---\n\n".join([doc.page_content for doc in results])  # Get the context text
         external_context = "\n\n---\n\n".join([doc.page_content for doc in results_articles])  # Get the context
@@ -101,7 +106,7 @@ class App:
         response_text = model.invoke(prompt)  # Use invoke instead of predict
         
         sources = [doc.metadata.get("source", None) for doc in results]
-        formatted_response = f"Response: {response_text}\n"
+        formatted_response = f"Response: {response_text}\nSources: {sources}"
         self.result_text.insert(tk.END, formatted_response + "\n")
 
 if __name__ == "__main__":
